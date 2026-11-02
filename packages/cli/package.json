@@ -1,0 +1,52 @@
+{
+  "name": "@hellotracks/ht-cli",
+  "version": "0.1.7",
+  "description": "Hellotracks operational CLI",
+  "type": "module",
+  "bin": {
+    "ht": "./dist/index.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "license": "MIT",
+  "author": {
+    "name": "Hellotracks",
+    "email": "support@hellotracks.com",
+    "url": "https://hellotracks.com"
+  },
+  "homepage": "https://hellotracks.com/cli",
+  "bugs": {
+    "url": "https://github.com/Hellotracks/hellotracks-cli/issues"
+  },
+  "keywords": [
+    "hellotracks",
+    "cli",
+    "field-service",
+    "dispatch",
+    "route-optimization",
+    "gps-tracking",
+    "timesheets",
+    "automation"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Hellotracks/hellotracks-cli.git",
+    "directory": "packages/cli"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "build": "npm run build -w @hellotracks/ht-core && rm -rf dist && rm -f tsconfig.tsbuildinfo tsconfig.build.tsbuildinfo && tsc -p tsconfig.build.json",
+    "typecheck": "npm run build -w @hellotracks/ht-core && rm -f tsconfig.tsbuildinfo && tsc --noEmit -p tsconfig.json",
+    "test": "npm run build -w @hellotracks/ht-core && rm -rf dist && rm -f tsconfig.tsbuildinfo tsconfig.build.tsbuildinfo && tsc -p tsconfig.json && sh -c 'node --test $(find dist -name \"*.test.js\" -print)'",
+    "prepack": "npm run build"
+  },
+  "dependencies": {
+    "@hellotracks/ht-core": "0.1.0",
+    "commander": "^12.1.0"
+  }
+}

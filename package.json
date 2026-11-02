@@ -1,0 +1,25 @@
+{
+  "name": "hellotracks-cli",
+  "private": true,
+  "description": "The Hellotracks command line, ht",
+  "type": "module",
+  "workspaces": [
+    "packages/core",
+    "packages/cli"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "build": "npm run build -w @hellotracks/ht-core && npm run build -w @hellotracks/ht-cli",
+    "typecheck": "npm run typecheck -w @hellotracks/ht-core && npm run typecheck -w @hellotracks/ht-cli",
+    "test": "npm run test -w @hellotracks/ht-core && npm run test -w @hellotracks/ht-cli",
+    "build:release": "node scripts/build-release.mjs",
+    "publish:cli": "node scripts/publish-cli.mjs"
+  },
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "typescript": "^5.7.2"
+  }
+}

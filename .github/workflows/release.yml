@@ -1,0 +1,58 @@
+name: Release
+
+# Push a tag like v0.2.0 that matches packages/cli/package.json. The tarballs, install.sh and manifest.json go to
+# https://cli.hellotracks.org (manifest last); the packages go to npm when NPM_TOKEN is set.
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+  id-token: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    environment: release
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org
+      - name: Tag matches the CLI version
+        run: |
+          version="$(node -p 'require("./packages/cli/package.json").version')"
+          test "v${version}" = "${GITHUB_REF_NAME}" || { echo "Tag ${GITHUB_REF_NAME} is not v${version}"; exit 1; }
+      - run: npm install
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build:release
+      - name: Publish to cli.hellotracks.org
+        run: npm run publish:cli
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      - name: GitHub release
+        run: gh release create "${GITHUB_REF_NAME}" .build/release/*/*.tar.gz --title "${GITHUB_REF_NAME}" --notes "See CHANGELOG.md."
+        env:
+          GH_TOKEN: ${{ github.token }}
+      - name: Publish to npm
+        if: ${{ env.NODE_AUTH_TOKEN != '' }}
+        run: |
+          for pkg in core cli; do
+            name="$(node -p "require('./packages/${pkg}/package.json').name")"
+            version="$(node -p "require('./packages/${pkg}/package.json').version")"
+            if npm view "${name}@${version}" version >/dev/null 2>&1; then
+              echo "${name}@${version} is already on npm"
+            else
+              npm publish -w "${name}" --access public --provenance
+            fi
+          done
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
