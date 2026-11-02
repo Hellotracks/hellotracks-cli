@@ -40,10 +40,17 @@ export interface BulkRunReport {
     plannedUpdate: number;
     created: number;
     updated: number;
+    skipped: number;
     failed: number;
   };
   operations: Array<{ action: "create" | "update"; key: string | undefined; id: string | undefined; record: JsonRecord }>;
+  // Jobs deleted in Hellotracks stay deleted: the API answers a sync of their externalId with the deleted job.
+  skipped: Array<{ index: number; key: string | undefined; id: string | undefined; reason: "deleted" }>;
   errors: Array<{ index: number; code: string; message: string; record?: JsonRecord }>;
+}
+
+function isDeletedJob(item: unknown): boolean {
+  return isRecord(item) && item.status === "deleted";
 }
 
 function isRecord(value: unknown): value is JsonRecord {
@@ -195,13 +202,21 @@ async function existingByKey(context: CommandContext, resource: BulkResource, ke
 const DEFAULT_JOB_BATCH_SIZE = 50;
 
 // Writes the creates and the updates of a batch as one request each; returns what is still unwritten.
-async function writeJobBatch<T extends { action: "create" | "update"; id: string; record: JsonRecord }>(context: CommandContext, batch: T[]): Promise<T[]> {
+async function writeJobBatch<T extends { action: "create" | "update"; id: string; record: JsonRecord }>(
+  context: CommandContext,
+  batch: T[]
+): Promise<{ rest: T[]; deleted: T[]; }> {
   const rest: T[] = [];
+  const deleted: T[] = [];
   const creates = batch.filter((operation) => operation.action === "create");
   const updates = batch.filter((operation) => operation.action === "update");
   if (creates.length > 0) {
     try {
-      await createJobAction(context, { jobs: creates.map((operation) => operation.record) });
+      // the API answers one job per job sent, in the same order
+      const answer = await createJobAction(context, { jobs: creates.map((operation) => operation.record) });
+      creates.forEach((operation, index) => {
+        if (isDeletedJob(answer?.items?.[index])) deleted.push(operation);
+      });
     } catch {
       rest.push(...creates);
     }
@@ -213,7 +228,7 @@ async function writeJobBatch<T extends { action: "create" | "update"; id: string
       rest.push(...updates);
     }
   }
-  return rest;
+  return { rest, deleted };
 }
 
 async function createRecord(context: CommandContext, resource: BulkResource, record: JsonRecord): Promise<unknown> {
@@ -263,8 +278,9 @@ export async function runBulkAction(context: CommandContext, resource: BulkResou
     mode,
     dryRun: Boolean(options.dryRun),
     upsertBy,
-    summary: { input: records.length, plannedCreate: 0, plannedUpdate: 0, created: 0, updated: 0, failed: 0 },
+    summary: { input: records.length, plannedCreate: 0, plannedUpdate: 0, created: 0, updated: 0, skipped: 0, failed: 0 },
     operations: [],
+    skipped: [],
     errors: []
   };
 
@@ -283,14 +299,24 @@ export async function runBulkAction(context: CommandContext, resource: BulkResou
     return report;
   }
 
+  const skip = (operation: typeof planned[number]): void => {
+    report.summary.skipped += 1;
+    const keyValue = upsertBy ? operation.record[upsertBy] : undefined;
+    report.skipped.push({ index: operation.index, key: keyValue === undefined || keyValue === null ? undefined : String(keyValue), id: operation.id || undefined, reason: "deleted" });
+  };
+
   const runOne = async (operation: typeof planned[number]): Promise<boolean> => {
     try {
       if (operation.action === "update") {
         await updateRecord(context, resource, operation.id, operation.record);
         report.summary.updated += 1;
       } else {
-        await createRecord(context, resource, operation.record);
-        report.summary.created += 1;
+        const answer = await createRecord(context, resource, operation.record) as { items?: unknown[] } | undefined;
+        if (resource === "jobs" && isDeletedJob(answer?.items?.[0])) {
+          skip(operation);
+        } else {
+          report.summary.created += 1;
+        }
       }
       return true;
     } catch (error) {
@@ -309,9 +335,10 @@ export async function runBulkAction(context: CommandContext, resource: BulkResou
   const batchSize = resource === "jobs" ? Math.max(1, Number(options.batchSize ?? DEFAULT_JOB_BATCH_SIZE) || 1) : 1;
   for (let start = 0; start < planned.length; start += batchSize) {
     const batch = planned.slice(start, start + batchSize);
-    const rest = batch.length > 1 ? await writeJobBatch(context, batch) : batch;
+    const { rest, deleted } = batch.length > 1 ? await writeJobBatch(context, batch) : { rest: batch, deleted: [] };
     for (const operation of batch.filter((entry) => !rest.includes(entry))) {
-      if (operation.action === "update") report.summary.updated += 1;
+      if (deleted.includes(operation)) skip(operation);
+      else if (operation.action === "update") report.summary.updated += 1;
       else report.summary.created += 1;
     }
     for (const operation of rest) {

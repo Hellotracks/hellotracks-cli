@@ -108,7 +108,9 @@ Jobs are written 50 per request (`--batch-size`); a batch the API refuses is wri
 names each bad row. Members and places are written one at a time.
 
 A run stops at the first failed record unless `--continue-on-error` is given. Either way the report's `summary`
-counts what was created, updated, and failed, and the run exits 7 when anything failed.
+counts what was created, updated, skipped, and failed, and the run exits 7 when anything failed. A job someone deleted
+in Hellotracks stays deleted when a sync sends its `externalId` again: it's listed under `skipped` with reason
+`deleted`, not created anew.
 
 CSV cells are text. Columns typed `number` or `integer` in `ht <resource> columns` are sent as numbers; everything
 else, `date` included, is sent as written.

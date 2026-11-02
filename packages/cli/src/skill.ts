@@ -99,7 +99,8 @@ ht maps share members places jobs --title "Today" --expires 1d
 - \`jobs create\` with an \`--external-id\` that already exists updates that job, so syncs can be re-run.
 - Bulk \`import\` and \`sync\` take CSV, JSON, NDJSON or YAML; always run \`--dry-run\` first and read the plan.
   They stop at the first failed record unless \`--continue-on-error\`; exit 7 means some failed, listed in \`errors\`.
-  Dates in files must be YYYY-MM-DD; the date words only work in options.
+  Dates in files must be YYYY-MM-DD; the date words only work in options. Jobs deleted in Hellotracks are not brought
+  back by a sync: they show up under \`skipped\` (reason \`deleted\`).
 - \`routing optimize\` saves the new order; members and the office see it right away.
 - Report files from \`ht reports run\` come as signed links; anyone with a link can download the file until it expires.
 - Classic report types (\`ht reports types\`, \`generate\`, \`recurring\`) still work; prefer \`ht reports catalog\` and \`run\`.

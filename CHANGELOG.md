@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+
+- `jobs import` and `jobs sync` count a job that was deleted in Hellotracks under `summary.skipped` (reason
+  `deleted`) instead of as created; the API keeps it deleted (runtime 4.2.2.42 and later).
+
 ## 0.2.0 (2026-11-02)
 
 ### New

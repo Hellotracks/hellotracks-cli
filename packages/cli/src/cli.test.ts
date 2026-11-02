@@ -1518,6 +1518,46 @@ test("members create sends the fields create does not save as an update, and upd
   }
 });
 
+test("jobs sync reports a job deleted in Hellotracks as skipped, not created", async () => {
+  const server = http.createServer((req, res) => {
+    let raw = "";
+    req.on("data", (chunk) => {
+      raw += String(chunk);
+    });
+    req.on("end", () => {
+      res.setHeader("Content-Type", "application/json");
+      if (req.method === "GET") {
+        res.end(JSON.stringify({ data: { items: [] }, error: null, meta: {} }));
+        return;
+      }
+      const body = JSON.parse(raw) as { jobs?: Array<Record<string, unknown>> } & Record<string, unknown>;
+      const jobs = body.jobs ?? [body];
+      const items = jobs.map((job, index) => job.externalId === "wo-2"
+        ? { id: "job-old", externalId: "wo-2", title: job.title, status: "deleted" }
+        : { id: `job-${index}`, ...job });
+      res.end(JSON.stringify({ data: { items }, error: null, meta: {} }));
+    });
+  });
+  await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+  const address = server.address();
+  assert.ok(address && typeof address === "object");
+  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "ht-jobs-deleted-"));
+  try {
+    const file = path.join(tempDir, "jobs.json");
+    await fs.writeFile(file, JSON.stringify([{ externalId: "wo-1", title: "a" }, { externalId: "wo-2", title: "b" }, { externalId: "wo-3", title: "c" }]));
+    for (const batchSize of ["50", "1"]) {
+      const result = await runCli(["--api-url", `http://127.0.0.1:${address.port}`, "--api-key", "secret", "--json", "jobs", "sync", "--file", file, "--batch-size", batchSize]);
+      assert.equal(result.exitCode, 0, result.stderr);
+      const report = JSON.parse(result.stdout) as { summary: { created: number; skipped: number; failed: number }; skipped: Array<{ key: string; reason: string }> };
+      assert.deepEqual([report.summary.created, report.summary.skipped, report.summary.failed], [2, 1, 0]);
+      assert.deepEqual(report.skipped.map((entry) => [entry.key, entry.reason]), [["wo-2", "deleted"]]);
+    }
+  } finally {
+    await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
+    await fs.rm(tempDir, { recursive: true, force: true });
+  }
+});
+
 test("signup and auth login --email work without a key, store the issued key, and never print it", async () => {
   const issuedKey = "k1234567.0123456789abcdef";
   const requests: Array<{ method: string; url: string; apiKey: string | undefined; body: Record<string, unknown> }> = [];

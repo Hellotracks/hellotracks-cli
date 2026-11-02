@@ -65,8 +65,12 @@ docs.
 - Older API versions saved only username, name, phone, password, and role when creating a member, so
   `createMemberAction` sends the rest as an update too. A password can't be set through the API.
 - Member route start time is a number like 800 for 08:00; `routeStartTimeValue` converts it.
-- `GET /members/{id}`, `/places/{id}` and `/jobs/{id}` answer an unknown id with an empty list; core turns that into
-  a 404.
+- `GET /members/{id}`, `/places/{id}` and `/jobs/{id}` answered an unknown id with an empty list before runtime
+  4.2.2.42 and answer 404 since; core turns the empty list into a 404 too, so both give exit code 4.
+- Since 4.2.2.42, `PATCH /members/{id}` answers 400 naming a field it couldn't apply (it used to skip it quietly),
+  and refuses `password`. A sync that sends a member's unchanged role is fine.
+- Since 4.2.2.42, a job deleted in Hellotracks stays deleted: creating or syncing its `externalId` again answers with
+  the deleted job (`status: "deleted"`). Bulk runs count it under `summary.skipped`, not as created.
 - `--updated-since` and `--created-since` are epoch milliseconds in the API; the CLI converts dates.
 - `PATCH /reports/saved/{id}` replaces the whole saved report, so updates send every field.
 
