@@ -10,6 +10,9 @@ Rules for people and coding agents (Claude, Codex) who change this repository. T
   needs live here too, not in a command: form template checks (`src/forms/templates.ts`) and the report request,
   schedule and run waiting (`src/reports/requests.ts`).
 - `packages/cli`: the `ht` command. One file per resource in `src/commands/`.
+- `packages/mcp`: the remote MCP server for AI apps (`mcp.hellotracks.com`): OAuth sign-in, and tools in
+  `src/tools/`, one file per area. A tool calls the core's actions and shapes the answer; it never calls the API
+  itself. A new action in the core may want a tool there too.
 
 `ht` is command-first: no TUI, no interactive shell.
 
