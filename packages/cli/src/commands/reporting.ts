@@ -14,14 +14,11 @@ import {
 } from "@hellotracks/ht-core/actions/index.js";
 import { confirmDangerous, contextFor, maybeWarn, outputData, runCommand } from "@hellotracks/ht-core/commands/support.js";
 import type { CommandContext } from "@hellotracks/ht-core/types.js";
-import { resolveDateWord } from "@hellotracks/ht-core/utils.js";
+import { REPORT_PERIODS, ReportRunPendingError, reportRequest, reportRunFiles, savedReportBody, waitForReportRun, type ReportRequestInput, type SavedReportInput } from "@hellotracks/ht-core/reports/requests.js";
 import { collect, resolveMemberIds, resolvePlaceIds } from "./selectors.js";
 
 type JsonRecord = Record<string, unknown>;
 
-const PERIODS = ["today", "yesterday", "thisWeek", "lastWeek", "thisMonth", "lastMonth", "last7Days", "last30Days"];
-const WEEKDAYS = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
-const POLL_INTERVAL_MS = 2000;
 
 interface RequestOptions {
   period?: string;
@@ -60,14 +57,6 @@ function rawMode(context: CommandContext): boolean {
   return context.output === "json" || context.output === "yaml";
 }
 
-function dayNumber(value: string, label: string): number {
-  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(resolveDateWord(value) ?? "");
-  if (!match) {
-    throw new Error(`${label} must be YYYY-MM-DD, today, yesterday, or tomorrow.`);
-  }
-  return Number(match[1]) * 10000 + Number(match[2]) * 100 + Number(match[3]);
-}
-
 function dayText(day: unknown): string {
   const value = String(day ?? "");
   return /^\d{8}$/.test(value) ? `${value.slice(0, 4)}-${value.slice(4, 6)}-${value.slice(6, 8)}` : "";
@@ -75,16 +64,6 @@ function dayText(day: unknown): string {
 
 function timestampText(value: unknown): string {
   return typeof value === "number" && value > 0 ? new Date(value).toISOString().replace("T", " ").slice(0, 16) : "";
-}
-
-function weekdayNumber(value: string): number {
-  const text = value.trim().toLowerCase();
-  const index = WEEKDAYS.findIndex((day) => day === text || day.slice(0, 3) === text);
-  const number = index >= 0 ? index + 1 : Number(text);
-  if (!Number.isInteger(number) || number < 1 || number > 7) {
-    throw new Error(`Invalid weekday: ${value}. Use monday to sunday.`);
-  }
-  return number;
 }
 
 function keyValues(values: string[], label: string): Record<string, string> {
@@ -99,7 +78,7 @@ function keyValues(values: string[], label: string): Record<string, string> {
 
 function addRequestOptions(command: Command): Command {
   return command
-    .option("--period <period>", `Relative period: ${PERIODS.join(", ")}`)
+    .option("--period <period>", `Relative period: ${REPORT_PERIODS.join(", ")}`)
     .option("--from <date>", "First day: YYYY-MM-DD, today, yesterday, or tomorrow; use with --until")
     .option("--until <date>", "Last day: YYYY-MM-DD, today, yesterday, or tomorrow")
     .option("--view <view>", "One of the report's views; see ht reports catalog")
@@ -114,65 +93,34 @@ function addRequestOptions(command: Command): Command {
     .option("--no-compare", "Leave out the comparison with the period before");
 }
 
-// Builds the API's report request on top of base, so an update keeps every field that is not passed again.
+// Turns the options into the core's request input, finding members and places by id, username, email or name.
+async function requestInput(context: CommandContext, options: RequestOptions): Promise<ReportRequestInput> {
+  const columns = options.column.map((column) => {
+    const index = column.indexOf("=");
+    return index > 0 ? { key: column.slice(0, index), name: column.slice(index + 1) } : { key: column };
+  });
+  return {
+    period: options.period,
+    from: options.from,
+    until: options.until,
+    view: options.view,
+    memberIds: options.member.length > 0 ? await resolveMemberIds(context, options.member, false) : undefined,
+    teamIds: options.team.map((team) => Number.parseInt(team, 10)),
+    placeIds: options.place.length > 0 ? await resolvePlaceIds(context, options.place, false) : undefined,
+    formId: options.form,
+    jobId: options.job,
+    columns,
+    options: keyValues(options.option, "--option"),
+    language: options.language,
+    compare: options.compare
+  };
+}
+
 async function buildRequest(context: CommandContext, base: JsonRecord, options: RequestOptions): Promise<JsonRecord> {
-  if (options.period && (options.from || options.until)) {
-    throw new Error("Use either --period or --from/--until, not both.");
-  }
-  if (Boolean(options.from) !== Boolean(options.until)) {
-    throw new Error("--from and --until must be given together.");
-  }
-  if (options.period && !PERIODS.includes(options.period)) {
-    throw new Error(`Invalid --period: ${options.period}. Use one of ${PERIODS.join(", ")}.`);
-  }
   if (options.member.length > 0 && options.team.length > 0) {
     throw new Error("Use either --member or --team, not both.");
   }
-  const request: JsonRecord = { ...base };
-  if (options.period) {
-    request.period = options.period;
-    delete request.fromDay;
-    delete request.untilDay;
-  }
-  if (options.from && options.until) {
-    request.fromDay = dayNumber(options.from, "--from");
-    request.untilDay = dayNumber(options.until, "--until");
-    delete request.period;
-  }
-  if (options.view) {
-    request.view = options.view;
-  }
-  if (options.member.length > 0) {
-    request.who = { kind: "people", memberUids: await resolveMemberIds(context, options.member, false) };
-  } else if (options.team.length > 0) {
-    request.who = { kind: "teams", teamIds: options.team.map((team) => Number.parseInt(team, 10)) };
-  }
-  if (options.place.length > 0) {
-    request.places = { kind: "list", placeUids: await resolvePlaceIds(context, options.place, false) };
-  }
-  if (options.job) {
-    request.jobId = options.job;
-  }
-  const reportOptions: Record<string, unknown> = { ...(isRecord(base.options) ? base.options : {}), ...keyValues(options.option, "--option") };
-  if (options.form) {
-    reportOptions.formId = options.form;
-  }
-  if (options.language) {
-    reportOptions.language = options.language;
-  }
-  if (options.column.length > 0) {
-    reportOptions.columns = JSON.stringify(options.column.map((column) => {
-      const index = column.indexOf("=");
-      return index > 0 ? { key: column.slice(0, index), name: column.slice(index + 1) } : { key: column, name: "" };
-    }));
-  }
-  if (Object.keys(reportOptions).length > 0) {
-    request.options = reportOptions;
-  }
-  if (options.compare === false) {
-    request.compare = false;
-  }
-  return request;
+  return reportRequest(base, await requestInput(context, options));
 }
 
 function catalogRows(reports: JsonRecord[]): JsonRecord[] {
@@ -186,10 +134,6 @@ function catalogRows(reports: JsonRecord[]): JsonRecord[] {
   }));
 }
 
-function runFiles(run: JsonRecord): JsonRecord[] {
-  return Array.isArray(run.files) ? run.files.filter(isRecord) : [];
-}
-
 function runText(run: JsonRecord): string {
   const lines = [
     `run: ${run.id}`,
@@ -199,32 +143,26 @@ function runText(run: JsonRecord): string {
   if (isRecord(run.error)) {
     lines.push(`error: ${run.error.code}: ${run.error.message}`);
   }
-  for (const file of runFiles(run)) {
+  for (const file of reportRunFiles(run)) {
     lines.push(`file: ${file.name} (${file.format}, ${file.bytes} bytes) ${file.url}`);
   }
   return lines.join("\n");
 }
 
 async function waitForRun(context: CommandContext, run: JsonRecord, timeoutSeconds: number): Promise<JsonRecord> {
-  const deadline = Date.now() + timeoutSeconds * 1000;
-  let current = run;
-  while (current.status === "queued" || current.status === "running") {
-    if (Date.now() > deadline) {
-      throw new Error(`Report run ${current.id} is still ${current.status} after ${timeoutSeconds}s. Check later with: ht reports status ${current.id} --download`);
+  try {
+    return await waitForReportRun(context, run, timeoutSeconds);
+  } catch (error) {
+    if (error instanceof ReportRunPendingError) {
+      throw new Error(`${error.message} Check later with: ht reports status ${error.run.id} --download`);
     }
-    await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS));
-    current = (await getReportRunAction(context, String(current.id))).run;
+    throw error;
   }
-  if (current.status === "failed") {
-    const error = isRecord(current.error) ? `${current.error.code}: ${current.error.message}` : "unknown error";
-    throw new Error(`Report run ${current.id} failed: ${error}`);
-  }
-  return current;
 }
 
 // File links are signed, so downloads send no API key.
 async function downloadFiles(run: JsonRecord, options: { dir?: string; file?: string }): Promise<Array<{ path: string; bytes: number; format: unknown }>> {
-  const files = runFiles(run);
+  const files = reportRunFiles(run);
   if (options.file && files.length > 1) {
     throw new Error("--file takes one format; use --dir for several.");
   }
@@ -252,7 +190,7 @@ async function finishRun(command: Command, context: CommandContext, run: JsonRec
   maybeWarn(context, `Waiting for report run ${run.id}`);
   const done = await waitForRun(context, run, Number.parseInt(options.timeout, 10));
   if (options.stdout) {
-    const files = runFiles(done);
+    const files = reportRunFiles(done);
     if (files.length !== 1 || !["csv", "json"].includes(String(files[0]?.format))) {
       throw new Error("--stdout needs exactly one csv or json file.");
     }
@@ -319,52 +257,24 @@ function addSavedOptions(command: Command): Command {
     .option("--paused", "Save it paused");
 }
 
-function scheduleFrom(base: JsonRecord, options: SavedOptions): JsonRecord {
-  const schedule: JsonRecord = { ...base };
-  if (options.every) {
-    if (!["none", "day", "week", "month"].includes(options.every)) {
-      throw new Error(`Invalid --every: ${options.every}. Use none, day, week, or month.`);
-    }
-    schedule.frequency = options.every;
-  }
-  if (options.weekday.length > 0) {
-    const days = options.weekday.map(weekdayNumber);
-    schedule.weekdays = days;
-    schedule.weekday = days[0];
-  }
-  if (options.monthDay) {
-    schedule.monthDay = Number.parseInt(options.monthDay, 10);
-  }
-  if (options.at) {
-    const match = /^(\d{1,2}):(\d{2})$/.exec(options.at.trim());
-    if (!match) {
-      throw new Error(`Invalid --at: ${options.at}. Use HH:mm.`);
-    }
-    schedule.hour = Number(match[1]);
-    schedule.minute = Number(match[2]);
-  }
-  return schedule;
-}
-
 async function savedBody(context: CommandContext, existing: JsonRecord, report: string, options: SavedOptions): Promise<JsonRecord> {
-  const baseRequest = isRecord(existing.request) ? existing.request : { report };
-  const recipients = isRecord(existing.recipients) ? { ...existing.recipients } : {};
-  if (options.to.length > 0) {
-    recipients.memberUids = await resolveMemberIds(context, options.to, false);
+  if (options.member.length > 0 && options.team.length > 0) {
+    throw new Error("Use either --member or --team, not both.");
   }
-  if (options.email.length > 0) {
-    recipients.emails = options.email;
-  }
-  const body: JsonRecord = {
-    name: options.name ?? existing.name,
-    request: await buildRequest(context, baseRequest, options),
-    formats: options.format.length > 0 ? options.format : existing.formats,
-    schedule: scheduleFrom(isRecord(existing.schedule) ? existing.schedule : {}, options),
-    recipients,
-    delivery: options.delivery ?? existing.delivery,
-    status: options.paused ? "paused" : existing.status
+  const input: SavedReportInput = {
+    ...await requestInput(context, options),
+    name: options.name,
+    formats: options.format,
+    every: options.every,
+    weekdays: options.weekday,
+    monthDay: options.monthDay ? Number.parseInt(options.monthDay, 10) : undefined,
+    at: options.at,
+    recipientMemberIds: options.to.length > 0 ? await resolveMemberIds(context, options.to, false) : undefined,
+    recipientEmails: options.email,
+    delivery: options.delivery,
+    paused: options.paused ? true : undefined
   };
-  return Object.fromEntries(Object.entries(body).filter(([, value]) => value !== undefined));
+  return savedReportBody(existing, report, input);
 }
 
 export function registerReporting(reports: Command): void {

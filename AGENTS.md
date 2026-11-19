@@ -6,7 +6,9 @@ Rules for people and coding agents (Claude, Codex) who change this repository. T
 ## Layout
 
 - `packages/core`: API client, config and credentials, actions (one function per API call), bulk import and sync,
-  output formatters, and the public API contract (`src/api/public-contract.ts`).
+  output formatters, and the public API contract (`src/api/public-contract.ts`). Rules that more than one program
+  needs live here too, not in a command: form template checks (`src/forms/templates.ts`) and the report request,
+  schedule and run waiting (`src/reports/requests.ts`).
 - `packages/cli`: the `ht` command. One file per resource in `src/commands/`.
 
 `ht` is command-first: no TUI, no interactive shell.
