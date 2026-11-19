@@ -132,6 +132,13 @@ interface ResolveOptions {
 
 async function resolveEnvironment(context: CommandContext, options: ResolveOptions = {}): Promise<ActionEnvironment> {
   const requireAuth = options.requireAuth ?? true;
+  if (context.credentials) {
+    const { apiUrl, apiKey } = context.credentials;
+    if (requireAuth && !apiKey) {
+      throw new ApiError("Sign in to Hellotracks first.", "unauthorized", 401);
+    }
+    return { context, profileName: "", apiUrl, apiKey, client: apiKey ? new ApiClient(apiUrl, apiKey, context) : undefined };
+  }
   const profile = await resolveProfile(context);
   if (requireAuth && !profile.apiKey) {
     throw new Error(`No API key configured for profile "${profile.profileName}". Run "${toolName()} auth login" or set HELLOTRACKS_API_KEY_FILE.`);
@@ -210,6 +217,9 @@ async function anonymousClient(context: CommandContext): Promise<{ environment: 
 
 // The key from an email code becomes the profile's key, as if it had been pasted into `auth login`.
 async function storeIssuedKey(context: CommandContext, environment: ActionEnvironment, issued: IssuedApiKey): Promise<StoredEmailCodeKey> {
+  if (context.credentials) {
+    throw new Error("A program with its own credentials keeps the key itself; use the issue… actions.");
+  }
   const credentialStorage = await persistProfile(environment.profileName, environment.apiUrl, issued.apiKey);
   const whoami = await new ApiClient(environment.apiUrl, issued.apiKey, context).get<AuthWhoAmIResponse>("/auth/whoami");
   return { issued, profileName: environment.profileName, apiUrl: environment.apiUrl, credentialStorage, whoami };
@@ -223,13 +233,21 @@ export async function startSignupAction(
   return client.post<EmailCodeSent>("/signup", input);
 }
 
+// The issue… actions hand back the new key without saving it, for a program that keeps keys itself, like the MCP server.
+export async function issueSignupKeyAction(
+  context: CommandContext,
+  input: { email: string; code: string; company: SignupCompanyInput; keyLabel?: string | undefined; }
+): Promise<IssuedApiKey> {
+  const { client } = await anonymousClient(context);
+  return client.post<IssuedApiKey>("/signup/verify", input);
+}
+
 export async function finishSignupAction(
   context: CommandContext,
   input: { email: string; code: string; company: SignupCompanyInput; keyLabel?: string | undefined; }
 ): Promise<StoredEmailCodeKey> {
-  const { environment, client } = await anonymousClient(context);
-  const issued = await client.post<IssuedApiKey>("/signup/verify", input);
-  return storeIssuedKey(context, environment, issued);
+  const environment = await resolveEnvironment(context, { requireAuth: false });
+  return storeIssuedKey(context, environment, await issueSignupKeyAction(context, input));
 }
 
 export async function startEmailLoginAction(context: CommandContext, input: { email: string; }): Promise<EmailCodeSent> {
@@ -237,13 +255,28 @@ export async function startEmailLoginAction(context: CommandContext, input: { em
   return client.post<EmailCodeSent>("/auth/email-code", input);
 }
 
+export async function issueEmailCodeKeyAction(
+  context: CommandContext,
+  input: { email: string; code: string; keyLabel?: string | undefined; }
+): Promise<IssuedApiKey> {
+  const { client } = await anonymousClient(context);
+  return client.post<IssuedApiKey>("/auth/email-code/verify", input);
+}
+
 export async function finishEmailLoginAction(
   context: CommandContext,
   input: { email: string; code: string; keyLabel?: string | undefined; }
 ): Promise<StoredEmailCodeKey> {
-  const { environment, client } = await anonymousClient(context);
-  const issued = await client.post<IssuedApiKey>("/auth/email-code/verify", input);
-  return storeIssuedKey(context, environment, issued);
+  const environment = await resolveEnvironment(context, { requireAuth: false });
+  return storeIssuedKey(context, environment, await issueEmailCodeKeyAction(context, input));
+}
+
+export async function issuePasswordKeyAction(
+  context: CommandContext,
+  input: { email: string; password: string; keyLabel?: string | undefined; }
+): Promise<IssuedApiKey> {
+  const { client } = await anonymousClient(context);
+  return client.post<IssuedApiKey>("/auth/password", input);
 }
 
 export async function logoutAction(context: CommandContext): Promise<{ profileName: string; }> {

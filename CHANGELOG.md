@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+### New
+
+- Core: `serviceContext` runs the actions with a key the calling program holds, without reading this machine's
+  profiles, keychain or environment, and the `issue…KeyAction`s hand back a new key without saving it. The MCP server
+  uses both. Date words can follow a company's time zone (`resolveDateWord(value, now, timeZone)`).
+
 ### Changed
 
 - `jobs import` and `jobs sync` count a job that was deleted in Hellotracks under `summary.skipped` (reason

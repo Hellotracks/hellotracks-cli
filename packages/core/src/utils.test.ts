@@ -25,3 +25,11 @@ test("resolveDateWord turns today, yesterday and tomorrow into the local date", 
   assert.equal(resolveDateWord("2026-05-01", lateEvening), "2026-05-01");
   assert.equal(resolveDateWord(undefined, lateEvening), undefined);
 });
+
+test("resolveDateWord can use a company's time zone instead of this machine's", () => {
+  const utcLate = new Date(Date.UTC(2026, 4, 31, 23, 30));
+  assert.equal(resolveDateWord("today", utcLate, "Europe/Vienna"), "2026-06-01");
+  assert.equal(resolveDateWord("today", utcLate, "America/Los_Angeles"), "2026-05-31");
+  assert.equal(resolveDateWord("tomorrow", utcLate, "America/Los_Angeles"), "2026-06-01");
+  assert.equal(resolveDateWord("yesterday", utcLate, "Europe/Vienna"), "2026-05-31");
+});

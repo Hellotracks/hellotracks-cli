@@ -36,7 +36,14 @@ export function parseBoolean(value: string): boolean {
   throw new Error(`Invalid boolean value: ${value}`);
 }
 
-export function localDateString(offsetDays = 0, now: Date = new Date()): string {
+// The calendar date offsetDays from now, on this machine's clock or in the given time zone.
+export function localDateString(offsetDays = 0, now: Date = new Date(), timeZone?: string): string {
+  if (timeZone) {
+    const today = new Intl.DateTimeFormat("en-CA", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" }).format(now);
+    const date = new Date(`${today}T12:00:00Z`);
+    date.setUTCDate(date.getUTCDate() + offsetDays);
+    return date.toISOString().slice(0, 10);
+  }
   const date = new Date(now.getTime());
   date.setDate(date.getDate() + offsetDays);
   const year = date.getFullYear();
@@ -47,13 +54,14 @@ export function localDateString(offsetDays = 0, now: Date = new Date()): string 
 
 const DATE_WORD_OFFSETS: Record<string, number> = { yesterday: -1, today: 0, tomorrow: 1 };
 
-// The public API only accepts YYYY-MM-DD, so today, yesterday and tomorrow become the local calendar date here.
-export function resolveDateWord(value: string | undefined, now: Date = new Date()): string | undefined {
+// The public API only accepts YYYY-MM-DD, so today, yesterday and tomorrow become the local calendar date here,
+// or the date in timeZone for a program that works for a company somewhere else.
+export function resolveDateWord(value: string | undefined, now: Date = new Date(), timeZone?: string): string | undefined {
   if (value === undefined) {
     return undefined;
   }
   const offset = DATE_WORD_OFFSETS[value.trim().toLowerCase()];
-  return offset === undefined ? value : localDateString(offset, now);
+  return offset === undefined ? value : localDateString(offset, now, timeZone);
 }
 
 export function parseInteger(value: string): number {

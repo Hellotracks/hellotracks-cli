@@ -191,14 +191,15 @@ export class ApiClient {
     const init: RequestInit = {
       method,
       headers: {
-        // sign-up and sign-in by email code are the only calls without a key
+        ...this.context.headers,
+        // sign-up and sign-in by email code or password are the only calls without a key
         ...(this.apiKey ? { "API-Key": this.apiKey } : {}),
         ...(this.context.requestId ? { "X-Request-ID": this.context.requestId } : {}),
         ...(this.context.integrationSource ? { "HT-Integration-Source": this.context.integrationSource } : {}),
         ...(this.context.clientUserAgent ? { "User-Agent": this.context.clientUserAgent } : {})
       }
     };
-    const timeoutMs = options?.timeoutMs;
+    const timeoutMs = options?.timeoutMs ?? this.context.requestTimeoutMs;
     const controller = timeoutMs ? new AbortController() : undefined;
     let timeout: NodeJS.Timeout | undefined;
     if (controller) {

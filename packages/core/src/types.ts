@@ -38,6 +38,12 @@ export interface CommandContext {
   confirmProfile?: string | undefined;
   integrationSource?: string | undefined;
   clientUserAgent?: string | undefined;
+  /** Set by a program that already holds the key, like the MCP server: then no profile, keychain or environment variable is read. */
+  credentials?: { apiUrl: string; apiKey?: string | undefined; } | undefined;
+  /** More headers on every request. */
+  headers?: Record<string, string> | undefined;
+  /** A time limit for requests that don't set their own, in milliseconds. */
+  requestTimeoutMs?: number | undefined;
 }
 
 export interface ApiEnvelope<T> {
