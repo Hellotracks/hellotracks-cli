@@ -1,0 +1,19 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "com.hellotracks/hellotracks",
+  "title": "Hellotracks",
+  "description": "Run a field team: people and teams, jobs, places, routes on real roads, timesheets, forms, alerts and reports.",
+  "version": "0.2.0",
+  "websiteUrl": "https://hellotracks.com/en/cli/",
+  "repository": {
+    "url": "https://github.com/Hellotracks/hellotracks-cli",
+    "source": "github",
+    "subfolder": "packages/mcp"
+  },
+  "remotes": [
+    {
+      "type": "streamable-http",
+      "url": "https://mcp.hellotracks.com/mcp"
+    }
+  ]
+}
