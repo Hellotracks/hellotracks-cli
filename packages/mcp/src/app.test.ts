@@ -295,9 +295,13 @@ test("a metadata-document client with a loopback redirect connects read only", a
   const clientId = "https://claude.ai/oauth/claude-code-client-metadata";
   const tokens = await connect(clientId, "http://localhost:53123/callback", { readOnly: true });
   assert.equal(tokens.scope, "read");
+  // Only the reading tools are offered, so the AI app never shows a change it can't make.
+  const listed = (await rpc(tokens.access_token, "tools/list", {})).body?.result.tools as Array<{ name: string; annotations: { readOnlyHint: boolean } }>;
+  assert.equal(listed.length, 16);
+  assert.ok(listed.every((tool) => tool.annotations.readOnlyHint), "only read tools");
   const result = await rpc(tokens.access_token, "tools/call", { name: "create_jobs", arguments: { jobs: [{ title: "Nope" }] } });
   assert.equal(result.body?.result.isError, true);
-  assert.match(result.body?.result.content[0].text, /read only/);
+  assert.match(result.body?.result.content[0].text, /not found/);
   const read = await rpc(tokens.access_token, "tools/call", { name: "find_jobs", arguments: { date: "2026-11-12" } });
   assert.equal(JSON.parse(read.body?.result.content[0].text).jobs.length, 3);
 });
@@ -459,7 +463,7 @@ test("tools write what the API expects and stop on a read-only connection", asyn
   for (const name of ["delete_jobs", "remove_members", "update_company"]) {
     const result = await rpc(readOnly.access_token, "tools/call", { name, arguments: name === "update_company" ? { name: "X" } : { ids: ["j1"] } });
     assert.equal(result.body?.result.isError, true, name);
-    assert.match(result.body?.result.content[0].text, /read only/);
+    assert.match(result.body?.result.content[0].text, /not found/);
   }
 });
 

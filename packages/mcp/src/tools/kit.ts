@@ -53,6 +53,11 @@ export class Tools {
   }
 
   add<Shape extends z.ZodRawShape>(name: string, spec: ToolSpec<Shape>, handler: (args: z.output<z.ZodObject<Shape>>, ctx: ToolContext) => Promise<unknown>): void {
+    // A read-only connection is offered only the tools that read, so the AI app never shows changes it can't make.
+    // The check in the handler below stays as the guard.
+    if (spec.effect !== "read" && this.ctx.connection.grant.readOnly) {
+      return;
+    }
     const register = this.server.registerTool.bind(this.server) as (name: string, config: unknown, callback: (args: unknown) => Promise<CallToolResult>) => void;
     register(name, {
       title: spec.title,

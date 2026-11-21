@@ -28,7 +28,7 @@ Connect at **`https://mcp.hellotracks.com/mcp`**. Docs: https://api-docs.hellotr
 
 Every tool has a `title` and `readOnlyHint`, `destructiveHint`, `idempotentHint` and `openWorldHint` annotations;
 the ones that reach people outside Hellotracks (invites, public links, emailed reports, alert emails) are open world.
-A "Read only" connection can use only the read tools.
+A "Read only" connection is offered only the 16 read tools; the others aren't listed, and a call to one is refused.
 
 Left out on purpose: API keys and webhooks (they hand data to other systems, so a prompt hidden in a job note must not
 be able to set them up), bulk file import and export, and the classic report types. They stay in the dashboard and
