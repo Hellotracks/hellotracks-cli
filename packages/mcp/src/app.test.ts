@@ -205,8 +205,8 @@ async function connect(clientId: string, redirectUri: string, options: { readOnl
   return (await token.json()) as { access_token: string; refresh_token: string; scope: string };
 }
 
-async function rpc(token: string, method: string, params: unknown, headers: Record<string, string> = {}) {
-  const response = await fetch(`${base}/mcp`, {
+async function rpc(token: string, method: string, params: unknown, headers: Record<string, string> = {}, path = "/mcp") {
+  const response = await fetch(`${base}${path}`, {
     method: "POST",
     headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json", Accept: "application/json, text/event-stream", ...headers },
     body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params })
@@ -289,6 +289,27 @@ test("a registered client signs in by email code and uses the tools", async () =
   assert.equal(revoke.status, 200);
   assert.ok(calls.some((call) => call.path === "/v1/apikeys/kid123/revoke"));
   assert.equal((await rpc(tokens.access_token, "tools/list", {})).status, 401);
+});
+
+test("the bare address works too, with metadata that names it", async () => {
+  // People paste https://mcp.hellotracks.com without /mcp.
+  const anonymous = await fetch(`${base}/`, { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
+  assert.equal(anonymous.status, 401);
+  assert.match(anonymous.headers.get("www-authenticate") ?? "", /resource_metadata="http:\/\/127\.0\.0\.1:\d+\/\.well-known\/oauth-protected-resource"/);
+  const resource = await (await fetch(`${base}/.well-known/oauth-protected-resource`)).json() as { resource: string };
+  assert.equal(resource.resource, `${base}/`);
+
+  const tokens = await connect("https://claude.ai/oauth/claude-code-client-metadata", "http://localhost:53126/callback");
+  const listed = await rpc(tokens.access_token, "tools/list", {}, {}, "/");
+  assert.equal(listed.status, 200);
+  assert.equal((listed.body?.result.tools as unknown[]).length, 47);
+
+  // A browser still gets the page for people; an MCP client asking for a stream gets 405.
+  const pageAnswer = await fetch(`${base}/`);
+  assert.equal(pageAnswer.status, 200);
+  assert.match(await pageAnswer.text(), /Add this URL/);
+  const stream = await fetch(`${base}/`, { headers: { Authorization: `Bearer ${tokens.access_token}`, Accept: "text/event-stream" } });
+  assert.equal(stream.status, 405);
 });
 
 test("a metadata-document client with a loopback redirect connects read only", async () => {

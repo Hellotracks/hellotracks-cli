@@ -9,7 +9,9 @@ It is a thin layer over `@hellotracks/ht-core`, the same core the `ht` command l
 the core's actions, and rules both need (form template checks, report requests) live in the core. This package adds
 only the sign-in, the tool descriptions and the shape of the answers.
 
-Connect at **`https://mcp.hellotracks.com/mcp`**. Docs: https://api-docs.hellotracks.com/mcp
+Connect at **`https://mcp.hellotracks.com/mcp`**. The bare `https://mcp.hellotracks.com` works too, because people paste
+it; it has its own resource metadata at `/.well-known/oauth-protected-resource`. A browser opening it gets a short page
+for people. Docs: https://api-docs.hellotracks.com/mcp
 
 ## Tools
 
