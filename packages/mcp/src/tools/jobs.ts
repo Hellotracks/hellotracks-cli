@@ -24,7 +24,7 @@ const jobFields = {
   timeWindowStart: HHMM.optional().describe("Earliest arrival, HH:mm local."),
   timeWindowEnd: HHMM.optional().describe("Latest arrival, HH:mm local."),
   onSiteMinutes: z.number().int().min(0).max(1440).optional().describe("Time on site."),
-  priority: z.number().int().min(0).max(10).optional().describe("0 normal, higher is more urgent."),
+  priority: z.number().int().min(0).max(10).optional().describe("5 is normal (the default); 6 to 10 more urgent, 0 to 4 less."),
   notes: z.string().max(4000).optional().describe("Notes the worker sees."),
   contactName: z.string().optional(),
   contactPhone: z.string().optional(),
