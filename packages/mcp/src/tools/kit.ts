@@ -69,12 +69,29 @@ export class Tools {
 
   private async timeZone(): Promise<string> {
     if (!this.zone) {
-      const who = await whoamiAction(this.ctx.context).catch(() => undefined);
-      this.zone = stringAt(who, ["account", "locale", "timezone"]) ?? "UTC";
+      const grantId = this.ctx.connection.grant.id;
+      const known = ZONES.get(grantId);
+      if (known && Date.now() - known.at < ZONE_TTL_MS) {
+        this.zone = known.zone;
+      } else {
+        const who = await whoamiAction(this.ctx.context).catch(() => undefined);
+        const zone = stringAt(who, ["account", "locale", "timezone"]);
+        this.zone = zone ?? "UTC";
+        if (zone) {
+          ZONES.set(grantId, { zone, at: Date.now() });
+        }
+      }
     }
     return this.zone;
   }
 }
+
+/**
+ * Each request gets a new server, so without this every tool call with a date asked the API who the person is. The
+ * API refuses more than 20 identical requests per key and minute, so a busy AI app was throttled on everything.
+ */
+const ZONES = new Map<string, { zone: string; at: number }>();
+const ZONE_TTL_MS = 60 * 60 * 1000;
 
 async function run(work: () => Promise<unknown>): Promise<CallToolResult> {
   try {

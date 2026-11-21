@@ -420,6 +420,13 @@ test("tools write what the API expects and stop on a read-only connection", asyn
   assert.equal(sent.j3?.onSiteDurationSeconds, 1800);
   assert.equal(updated.data.failed, undefined);
 
+  // The time zone is asked once per connection, not on every call: the API throttles identical requests.
+  const whoamiBefore = calls.filter((entry) => entry.path === "/v1/auth/whoami").length;
+  assert.ok(whoamiBefore > 0);
+  await call("find_jobs", { date: "today" });
+  await call("find_jobs", { date: "tomorrow" });
+  assert.equal(calls.filter((entry) => entry.path === "/v1/auth/whoami").length, whoamiBefore);
+
   // A job id the company doesn't have comes back as failed, not as a quiet success.
   const partly = await call("update_jobs", { jobs: [{ id: "j1", priority: 2 }, { id: "missing-1", priority: 2 }] });
   assert.deepEqual(partly.data.updated.map((job: { id: string }) => job.id), ["j1"]);
