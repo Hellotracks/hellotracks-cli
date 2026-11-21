@@ -96,7 +96,8 @@ function fakeApi(req: IncomingMessage, body: unknown): { status: number; data: u
   }
   if (path === "/jobs" && req.method === "PATCH") {
     const jobs = (body as { jobs: Record<string, object> }).jobs;
-    return { status: 200, data: { items: Object.entries(jobs).map(([id, fields]) => ({ id, ...fields })) } };
+    // Like the API: ids it doesn't know are left out of the answer, without an error.
+    return { status: 200, data: { items: Object.entries(jobs).filter(([id]) => !id.startsWith("missing")).map(([id, fields]) => ({ id, ...fields })) } };
   }
   if (path === "/reports/run" && req.method === "POST") {
     return { status: 200, data: { run: { id: "r1", status: "queued" } } };
@@ -417,6 +418,12 @@ test("tools write what the API expects and stop on a read-only connection", asyn
   assert.deepEqual(sent.j1, { assigneeId: "m2" });
   assert.match(String(sent.j3?.date), /^\d{4}-\d{2}-\d{2}$/);
   assert.equal(sent.j3?.onSiteDurationSeconds, 1800);
+  assert.equal(updated.data.failed, undefined);
+
+  // A job id the company doesn't have comes back as failed, not as a quiet success.
+  const partly = await call("update_jobs", { jobs: [{ id: "j1", priority: 2 }, { id: "missing-1", priority: 2 }] });
+  assert.deepEqual(partly.data.updated.map((job: { id: string }) => job.id), ["j1"]);
+  assert.deepEqual(partly.data.failed.map((entry: { id: string }) => entry.id), ["missing-1"]);
 
   // Team names become the team numbers the API stores.
   await call("update_members", { members: [{ id: "m2", teams: ["north", "South"] }] });

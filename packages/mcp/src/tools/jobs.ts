@@ -98,7 +98,11 @@ export function registerJobTools(tools: Tools): void {
   }, async ({ jobs }, ctx) => {
     const changes = Object.fromEntries(await Promise.all(jobs.map(async ({ id, ...job }) => [id, await jobBody(job, ctx)] as const)));
     const result = await updateJobAction(ctx.context, { jobs: changes });
-    return { updated: (result.items ?? []).map(compactJob) };
+    const updated = (result.items ?? []).map(compactJob);
+    // The API leaves out ids it doesn't know instead of failing; say so, or the AI app reports a change that never happened.
+    const returned = new Set(updated.map((job) => String((job as Json).id)));
+    const failed = jobs.filter(({ id }) => !returned.has(id)).map(({ id }) => ({ id, error: "No job with this id in this company; find_jobs gives the ids." }));
+    return failed.length ? { updated, failed } : { updated };
   });
 
   tools.add("archive_jobs", {
