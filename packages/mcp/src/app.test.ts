@@ -66,7 +66,7 @@ function fakeApi(req: IncomingMessage, body: unknown): { status: number; data: u
     return { status: 200, data: { account: { locale: { timezone: "Europe/Berlin" } }, company: { id: "c1", name: "Acme Field" } } };
   }
   if (path === "/company") {
-    return { status: 200, data: { company: { name: "Acme Field", teamsConfig: [{ id: 1, name: "North" }, { id: 2, name: "South" }] } } };
+    return { status: 200, data: { company: { name: "Acme Field", teamsConfig: [{ id: 1, name: "North" }, { id: 2, name: "South" }], settings: { autoCheckins: true, workersAllowedTrackingOff: false } } } };
   }
   if (path === "/members" && req.method === "POST") {
     const { username } = body as { username: string };
@@ -419,6 +419,11 @@ test("tools write what the API expects and stop on a read-only connection", asyn
   assert.match(String(sent.j3?.date), /^\d{4}-\d{2}-\d{2}$/);
   assert.equal(sent.j3?.onSiteDurationSeconds, 1800);
   assert.equal(updated.data.failed, undefined);
+
+  // The company's settings sit in its settings object; teams come from teamsConfig.
+  const company = await call("get_company", {});
+  assert.deepEqual(company.data.settings, { autoCheckins: true, workersAllowedTrackingOff: false });
+  assert.deepEqual(company.data.teams, [{ id: 1, name: "North" }, { id: 2, name: "South" }]);
 
   // The time zone is asked once per connection, not on every call: the API throttles identical requests.
   const whoamiBefore = calls.filter((entry) => entry.path === "/v1/auth/whoami").length;

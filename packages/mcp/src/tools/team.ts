@@ -71,7 +71,7 @@ export function registerTeamTools(tools: Tools): void {
       timezone: await timeZone(),
       today: await day("today"),
       teams: teamList(company),
-      settings: pick(company, Object.keys(SETTINGS))
+      settings: pick((company.settings ?? {}) as Json, Object.keys(SETTINGS))
     });
   });
 
