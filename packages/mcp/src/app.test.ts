@@ -134,7 +134,8 @@ before(async () => {
     secret: "s".repeat(40),
     allowedOrigins: ["https://claude.ai"],
     docsUrl: "https://example.com/docs",
-    serviceToken: "z".repeat(40)
+    serviceToken: "z".repeat(40),
+    openaiChallenge: "challenge-token-123"
   };
   const store = new Store(":memory:");
   const clients = new ClientsStore(store, async (url) => ({
@@ -289,6 +290,13 @@ test("a registered client signs in by email code and uses the tools", async () =
   assert.equal(revoke.status, 200);
   assert.ok(calls.some((call) => call.path === "/v1/apikeys/kid123/revoke"));
   assert.equal((await rpc(tokens.access_token, "tools/list", {})).status, 401);
+});
+
+test("OpenAI's domain check reads the token as plain text", async () => {
+  const answer = await fetch(`${base}/.well-known/openai-apps-challenge`);
+  assert.equal(answer.status, 200);
+  assert.match(answer.headers.get("content-type") ?? "", /^text\/plain/);
+  assert.equal(await answer.text(), "challenge-token-123");
 });
 
 test("the bare address works too, with metadata that names it", async () => {

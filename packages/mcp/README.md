@@ -66,6 +66,7 @@ MCP_SECRET=... node --disable-warning=ExperimentalWarning packages/mcp/dist/main
 | `MCP_PUBLIC_URL` | `http://localhost:8790` | Public origin; the MCP endpoint is `<origin>/mcp` |
 | `HELLOTRACKS_API_URL` | `https://api.hellotracks.com/v1` | The Hellotracks public API |
 | `MCP_SERVICE_TOKEN` | empty | Same value as the runtime's `MCP_SERVICE_TOKEN`; lets sign-in limits count per person |
+| `OPENAI_APPS_CHALLENGE` | empty | The token OpenAI's app submission asks for; served as plain text at `/.well-known/openai-apps-challenge` (404 while empty) |
 | `MCP_DB_PATH` | `mcp.db` | SQLite file (Node's built-in `node:sqlite`, Node 22.13 or newer) |
 | `PORT`, `MCP_HOST` | `8790`, `127.0.0.1` | Where it listens |
 | `MCP_ALLOWED_ORIGINS` | | Extra browser origins allowed to call `/mcp` |

@@ -67,6 +67,15 @@ export function createApp(config: Config, store: Store, clients?: ClientsStore):
     res.json({ ok: true });
   });
 
+  // OpenAI's app review proves we run this domain by reading its token here, as plain text.
+  app.get("/.well-known/openai-apps-challenge", (_req, res) => {
+    if (!config.openaiChallenge) {
+      res.status(404).type("text/plain").send("Not found");
+      return;
+    }
+    res.type("text/plain").send(config.openaiChallenge);
+  });
+
   app.get("/", (req, res, next) => {
     // An MCP client asking for an event stream gets the endpoint's answer (405), not the page for people.
     if (servesRoot && String(req.headers.accept ?? "").includes("text/event-stream")) {

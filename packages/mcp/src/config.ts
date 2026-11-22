@@ -15,6 +15,8 @@ export interface Config {
   docsUrl: string;
   /** Shared with the runtime (MCP_SERVICE_TOKEN), so it trusts the client IP we pass on for its sign-in limits. */
   serviceToken: string;
+  /** The token OpenAI's app review asks for at /.well-known/openai-apps-challenge to prove we run this domain. */
+  openaiChallenge: string;
 }
 
 const DEFAULT_ORIGINS = [
@@ -40,6 +42,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     secret,
     allowedOrigins: [...DEFAULT_ORIGINS, ...extraOrigins],
     docsUrl: env.MCP_DOCS_URL ?? "https://api-docs.hellotracks.com/ai-connector",
-    serviceToken: env.MCP_SERVICE_TOKEN ?? ""
+    serviceToken: env.MCP_SERVICE_TOKEN ?? "",
+    openaiChallenge: (env.OPENAI_APPS_CHALLENGE ?? "").trim()
   };
 }
