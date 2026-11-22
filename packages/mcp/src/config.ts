@@ -39,7 +39,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     dbPath: env.MCP_DB_PATH ?? "mcp.db",
     secret,
     allowedOrigins: [...DEFAULT_ORIGINS, ...extraOrigins],
-    docsUrl: env.MCP_DOCS_URL ?? "https://api-docs.hellotracks.com/mcp",
+    docsUrl: env.MCP_DOCS_URL ?? "https://api-docs.hellotracks.com/ai-connector",
     serviceToken: env.MCP_SERVICE_TOKEN ?? ""
   };
 }

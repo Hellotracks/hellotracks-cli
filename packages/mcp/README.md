@@ -11,7 +11,7 @@ only the sign-in, the tool descriptions and the shape of the answers.
 
 Connect at **`https://mcp.hellotracks.com/mcp`**. The bare `https://mcp.hellotracks.com` works too, because people paste
 it; it has its own resource metadata at `/.well-known/oauth-protected-resource`. A browser opening it gets a short page
-for people. Docs: https://api-docs.hellotracks.com/mcp
+for people. Docs: https://api-docs.hellotracks.com/ai-connector
 
 ## Tools
 
