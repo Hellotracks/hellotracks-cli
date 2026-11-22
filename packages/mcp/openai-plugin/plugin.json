@@ -11,7 +11,15 @@
   "homepage": "https://hellotracks.com/en/ai-apps/",
   "repository": "https://github.com/Hellotracks/hellotracks-cli",
   "license": "MIT",
-  "keywords": ["gps tracking", "dispatch", "field team", "route planning", "jobs", "timesheets", "check-in"],
+  "keywords": [
+    "gps tracking",
+    "dispatch",
+    "field team",
+    "route planning",
+    "jobs",
+    "timesheets",
+    "check-in"
+  ],
   "extensions": {
     "com.openai": {
       "interface": {
@@ -82,7 +90,8 @@
             }
           ]
         },
-        "commerce": false
+        "commerce": false,
+        "demo_recording_url": "https://customer-nuznjmuvkgg2qrw2.cloudflarestream.com/4542ca6351e1e492097f64f85ed53e70/watch"
       }
     }
   }
