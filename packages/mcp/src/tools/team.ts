@@ -12,7 +12,7 @@ import {
 } from "@hellotracks/ht-core/actions/index.js";
 import type { CommandContext } from "@hellotracks/ht-core/types.js";
 import { z } from "zod";
-import { DATE, HHMM, WEEKDAYS, ago, clean, each, formatHours, given, ids, pick, stringAt, weekHours, weekdayOf, type Json, type Tools } from "./kit.js";
+import { DATE, HHMM, WEEKDAYS, ago, clean, each, formatHours, given, ids, pick, stringAt, weekHours, weekdayOf, type Json, type Tools, limitInput, limitOf } from "./kit.js";
 
 /** The company switches an admin can turn on and off, as the API names them. */
 const SETTINGS: Record<string, string> = {
@@ -149,10 +149,10 @@ export function registerTeamTools(tools: Tools): void {
     input: {
       id: z.string().optional().describe("One member's id."),
       query: z.string().optional().describe("Part of the name, username or email."),
-      limit: z.number().int().min(1).max(500).optional().describe("Default 100.")
+      limit: limitInput(100, 500)
     }
   }, async ({ id, query, limit }, { context }) => {
-    const items = id ? [await getMemberAction(context, id)] : (await listMembersAction(context, { query, max: limit ?? 100 })).items;
+    const items = id ? [await getMemberAction(context, id)] : (await listMembersAction(context, { query, max: limitOf(limit, 100, 500) })).items;
     return { members: items.filter((member) => member.type !== "company").map(memberRow) };
   });
 

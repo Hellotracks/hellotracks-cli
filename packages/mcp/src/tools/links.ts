@@ -10,7 +10,7 @@ import {
   revokeMapShareAction
 } from "@hellotracks/ht-core/actions/index.js";
 import { z } from "zod";
-import { DATE, clean, given, iso, pick, type Json, type Tools } from "./kit.js";
+import { DATE, clean, given, iso, pick, type Json, type Tools, limitInput, limitOf } from "./kit.js";
 
 const EXPIRES = z.string().regex(/^\d+[mhd]$/).describe("How long it works, e.g. 24h or 3d.");
 const MAP_KINDS = ["places", "members", "jobs", "zones", "trips", "waypoints", "dayroute", "timeline", "heatmap", "isochrone"] as const;
@@ -42,14 +42,14 @@ export function registerLinkTools(tools: Tools): void {
       id: z.string().optional().describe("One arrival link's id."),
       jobId: z.string().optional(),
       date: DATE.optional(),
-      limit: z.number().int().min(1).max(200).optional().describe("Default 50.")
+      limit: limitInput(50, 200)
     }
   }, async ({ id, jobId, date, limit }, { context, day }) => {
     if (id) {
       const [{ session }, events] = await Promise.all([getEtaSessionAction(context, id), listEtaSessionEventsAction(context, id, { limit: 50 })]);
       return { ...sessionRow(session), events: events.items.map((event) => clean({ ...pick(event, ["type", "kind", "status"]), at: iso(event.createdAt ?? event.ts) })) };
     }
-    const result = await listEtaSessionsAction(context, { jobId, date: date ? await day(date) : undefined, limit: limit ?? 50 });
+    const result = await listEtaSessionsAction(context, { jobId, date: date ? await day(date) : undefined, limit: limitOf(limit, 50, 200) });
     return { links: result.items.map(sessionRow) };
   });
 
@@ -87,9 +87,9 @@ export function registerLinkTools(tools: Tools): void {
     title: "Find map links",
     description: "Map links made for this company, with when they expire.",
     effect: "read",
-    input: { limit: z.number().int().min(1).max(200).optional().describe("Default 50.") }
+    input: { limit: limitInput(50, 200) }
   }, async ({ limit }, { context }) => ({
-    links: (await listMapSharesAction(context, { limit: limit ?? 50 })).items.map((share) => clean({
+    links: (await listMapSharesAction(context, { limit: limitOf(limit, 50, 200) })).items.map((share) => clean({
       ...pick(share, ["id", "url", "title", "kind", "createdByName", "revoked", "expired"]), expiresAt: iso(share.expiresAt)
     }))
   }));

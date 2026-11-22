@@ -333,6 +333,12 @@ test("a metadata-document client with a loopback redirect connects read only", a
   assert.match(result.body?.result.content[0].text, /not found/);
   const read = await rpc(tokens.access_token, "tools/call", { name: "find_jobs", arguments: { date: "2026-11-12" } });
   assert.equal(JSON.parse(read.body?.result.content[0].text).jobs.length, 3);
+
+  // Codex asks for 500 jobs; that's capped at 200, not refused.
+  const many = await rpc(tokens.access_token, "tools/call", { name: "find_jobs", arguments: { date: "2026-11-12", limit: 500 } });
+  assert.notEqual(many.body?.result.isError, true);
+  const asked = calls.filter((call) => call.method === "GET" && call.path.startsWith("/v1/jobs")).at(-1);
+  assert.match(asked?.path ?? "", /limit=200/);
 });
 
 test("a reviewer signs in with a password, and sign-ins pass on the person's IP", async () => {

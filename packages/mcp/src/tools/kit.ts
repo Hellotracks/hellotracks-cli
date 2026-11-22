@@ -135,6 +135,14 @@ export const HHMM = z.string().regex(/^\d\d:\d\d$/);
 export const WEEKDAYS = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"] as const;
 export const ids = (what: string, max = 50) => z.array(z.string()).min(1).max(max).describe(`${what} ids.`);
 
+/**
+ * How many rows a find tool returns. AI apps often ask for more than we send (Codex asks find_jobs for 500), so a
+ * bigger number is capped instead of refused; the answer's count still says how many there are.
+ */
+export const limitInput = (fallback: number, max: number) =>
+  z.number().int().min(1).optional().describe(`Default ${fallback}, at most ${max}.`);
+export const limitOf = (limit: number | undefined, fallback: number, max: number) => Math.min(limit ?? fallback, max);
+
 // Answer helpers: AI apps read compact JSON best, so empty values are left out.
 export function clean(record: Json): Json {
   return Object.fromEntries(Object.entries(record).filter(([, value]) => value !== undefined && value !== null && value !== ""

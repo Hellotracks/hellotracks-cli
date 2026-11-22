@@ -10,7 +10,7 @@ import {
 } from "@hellotracks/ht-core/actions/index.js";
 import { z } from "zod";
 import { compactJob } from "./jobs.js";
-import { DATE, clean, each, given, ids, pick, type Json, type Tools } from "./kit.js";
+import { DATE, clean, each, given, ids, pick, type Json, type Tools, limitInput, limitOf } from "./kit.js";
 
 const placeFields = {
   name: z.string().min(1).max(200),
@@ -34,10 +34,10 @@ export function registerPlaceTools(tools: Tools): void {
     input: {
       id: z.string().optional().describe("One place's id."),
       query: z.string().optional().describe("Part of the name."),
-      limit: z.number().int().min(1).max(500).optional().describe("Default 50.")
+      limit: limitInput(50, 500)
     }
   }, async ({ id, query, limit }, { context }) => {
-    const items = id ? [await getPlaceAction(context, id)] : (await listPlacesAction(context, { query, max: limit ?? 50 })).items;
+    const items = id ? [await getPlaceAction(context, id)] : (await listPlacesAction(context, { query, max: limitOf(limit, 50, 500) })).items;
     return { places: items.map((place) => pick(place, PLACE_KEYS)) };
   });
 

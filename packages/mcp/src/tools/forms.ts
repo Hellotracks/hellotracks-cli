@@ -13,7 +13,7 @@ import {
 } from "@hellotracks/ht-core/actions/index.js";
 import { FORM_FIELD_TYPES, FORM_TEMPLATE_EXAMPLE, VALUE_FIELD_TYPES, contentArray, fieldLabel, fieldName, formDescription, formTitle, validateFormTemplate } from "@hellotracks/ht-core/forms/templates.js";
 import { z } from "zod";
-import { DATE, clean, iso, pick, type Json, type Tools } from "./kit.js";
+import { DATE, clean, iso, pick, type Json, type Tools, limitInput, limitOf } from "./kit.js";
 
 const FIELD = z.object({
   type: z.enum(FORM_FIELD_TYPES.map((entry) => entry.type) as [string, ...string[]]),
@@ -118,7 +118,7 @@ export function registerFormTools(tools: Tools): void {
       placeId: z.string().optional(),
       from: DATE.optional(),
       until: DATE.optional(),
-      limit: z.number().int().min(1).max(200).optional().describe("Default 50.")
+      limit: limitInput(50, 200)
     }
   }, async ({ id, formId, memberId, jobId, placeId, from, until, limit }, { context, day }) => {
     if (id) {
@@ -128,7 +128,7 @@ export function registerFormTools(tools: Tools): void {
       templateId: formId, memberId, jobId, placeId,
       from: from ? await day(from) : undefined,
       until: until ? await day(until) : undefined,
-      limit: limit ?? 50
+      limit: limitOf(limit, 50, 200)
     });
     return { answers: items.map(answerRow) };
   });

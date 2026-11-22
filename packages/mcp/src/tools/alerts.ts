@@ -8,7 +8,7 @@ import {
   updateAlertInstanceAction
 } from "@hellotracks/ht-core/actions/index.js";
 import { z } from "zod";
-import { DATE, HHMM, WEEKDAYS, clean, each, given, ids, iso, pick, type Json, type Tools } from "./kit.js";
+import { DATE, HHMM, WEEKDAYS, clean, each, given, ids, iso, pick, type Json, type Tools, limitInput, limitOf } from "./kit.js";
 
 const ACTIONS = ["checks_in", "checks_out", "checks_any", "no_check_in", "no_check_out", "no_check_any", "idle", "enters_zone", "leaves_zone",
   "no_connection_to_device", "enters_danger_zone", "battery_low"] as const;
@@ -40,12 +40,12 @@ export function registerAlertTools(tools: Tools): void {
       ruleId: z.string().optional().describe("Only alerts of this rule."),
       from: DATE.optional(),
       until: DATE.optional(),
-      limit: z.number().int().min(1).max(200).optional().describe("Alerts to show. Default 30.")
+      limit: limitInput(30, 200).describe("Alerts to show. Default 30, at most 200.")
     }
   }, async ({ ruleId, from, until, limit }, { context, day }) => {
     const [rules, alerts] = await Promise.all([
       listAlertConfigsAction(context),
-      listAlertInstancesAction(context, { configId: ruleId, from: from ? await day(from) : undefined, until: until ? await day(until) : undefined, limit: limit ?? 30 })
+      listAlertInstancesAction(context, { configId: ruleId, from: from ? await day(from) : undefined, until: until ? await day(until) : undefined, limit: limitOf(limit, 30, 200) })
     ]);
     return {
       rules: rules.items.map((rule) => pick(rule, ["id", "title", "action", "andAction", "description", "status", "statusText", "memberIds", "teamIds", "placeIds", "zoneIds", "emails", "weekdays", "timeStart", "timeEnd", "duration"])),

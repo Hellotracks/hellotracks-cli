@@ -9,7 +9,7 @@ import {
   updateJobAction
 } from "@hellotracks/ht-core/actions/index.js";
 import { z } from "zod";
-import { DATE, HHMM, clean, each, given, ids, iso, type Json, type ToolContext, type Tools } from "./kit.js";
+import { DATE, HHMM, clean, each, given, ids, iso, type Json, type ToolContext, type Tools, limitInput, limitOf } from "./kit.js";
 
 const PROGRESS = z.enum(["unassigned", "scheduled", "accepted", "in_progress", "success", "failed"]);
 
@@ -48,10 +48,10 @@ export function registerJobTools(tools: Tools): void {
       externalId: z.string().optional().describe("The job with this order number or other own id."),
       allDates: z.boolean().optional().describe("Search every date (with text or externalId)."),
       includeArchived: z.boolean().optional(),
-      limit: z.number().int().min(1).max(200).optional().describe("Default 50.")
+      limit: limitInput(50, 200)
     }
   }, async ({ date, assigneeId, progress, text, externalId, allDates, includeArchived, limit }, { context, day }) => {
-    const max = limit ?? 50;
+    const max = limitOf(limit, 50, 200);
     const result = await listJobsAction(context, {
       date: allDates || externalId ? undefined : await day(date),
       allDates: allDates || undefined,
