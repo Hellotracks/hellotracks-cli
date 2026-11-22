@@ -1,0 +1,89 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "hellotracks",
+  "version": "1.0.0",
+  "description": "GPS tracking and job dispatch for field teams. Ask where everyone is, send jobs to their phones and plan routes on real roads, in plain words.",
+  "author": {
+    "name": "Hellotracks",
+    "email": "support@hellotracks.com",
+    "url": "https://hellotracks.com"
+  },
+  "homepage": "https://hellotracks.com/en/ai-apps/",
+  "repository": "https://github.com/Hellotracks/hellotracks-cli",
+  "license": "MIT",
+  "keywords": ["gps tracking", "dispatch", "field team", "route planning", "jobs", "timesheets", "check-in"],
+  "extensions": {
+    "com.openai": {
+      "interface": {
+        "displayName": "Hellotracks",
+        "shortDescription": "GPS tracking and dispatch",
+        "longDescription": "Hellotracks is GPS tracking and job dispatch for field teams, on the phones they already have. No hardware. With this app you run your team from ChatGPT in plain words, and your people see the changes on their phones right away.\n\nAsk who is working today, where everyone is and which jobs are still open. Paste a list of addresses or an email and turn it into jobs, give them to the right person, move them to another day or change the time window. Plan a person's route on real roads, with their working hours, time windows, skills and vehicle size, and the new order goes straight to their phone.\n\nIt covers the rest of the day too: invite your team, keep customer places and zones, send a customer a live arrival link, share a live map, fix clock-in times on timesheets, build checklists and forms workers fill in on their phone and read the answers, run or schedule reports such as hours per person, and set up alerts like \"tell me when nobody checked in at the depot by 9\".\n\nTeams use it for cleaning, security, repair and maintenance, deliveries and field sales.\n\nYou sign in on a Hellotracks page with your email and password or an emailed code. Tick \"Read only\" if ChatGPT should only look. ChatGPT asks before it changes anything, and disconnecting revokes the access.\n\nNew to Hellotracks? Create your company on the same sign-in page, and ChatGPT sets it up with you: invites your team, adds the first jobs and plans their routes.",
+        "developerName": "Hellotracks",
+        "category": "Productivity",
+        "websiteURL": "https://hellotracks.com/en/ai-apps/",
+        "supportURL": "https://api-docs.hellotracks.com/ai-connector",
+        "privacyPolicyURL": "https://hellotracks.com/en/privacy-notice/",
+        "termsOfServiceURL": "https://hellotracks.com/en/terms-of-service/",
+        "defaultPrompt": [
+          "Who is working today and who still has open jobs?",
+          "Which jobs are still unassigned this week?",
+          "Plan tomorrow's route for one of my people and tell me which jobs don't fit."
+        ],
+        "brandColor": "#1BAE6E",
+        "composerIcon": "./assets/icon.png",
+        "logo": "./assets/icon.png"
+      },
+      "review": {
+        "test_cases": {
+          "positive": [
+            {
+              "description": "See the team's day",
+              "prompt": "Who is working today and who still has open jobs?",
+              "tools_triggered": "get_company, get_team_status",
+              "expected_behavior": "Names the people working today in the Hellotracks Review company (Denver), with where they last were and how many jobs each still has open."
+            },
+            {
+              "description": "Find unassigned jobs",
+              "prompt": "Which jobs are still unassigned this week?",
+              "tools_triggered": "get_company, find_jobs",
+              "expected_behavior": "Lists this week's jobs without an assignee, with day, title and address, or says there are none."
+            },
+            {
+              "description": "Create and assign jobs",
+              "prompt": "Add two visits for tomorrow afternoon, a furnace check at 1550 Platte St, Denver and a filter change at 2700 Welton St, Denver, and give them to whoever is closest.",
+              "tools_triggered": "get_company, get_team_status, create_jobs",
+              "expected_behavior": "Asks to confirm, then creates two jobs dated tomorrow with an afternoon time window, assigned to a person near those addresses, and names who got them."
+            },
+            {
+              "description": "Plan one person's route",
+              "prompt": "Plan Mia Torres's route for today and tell me which jobs don't fit.",
+              "tools_triggered": "find_members, optimize_route",
+              "expected_behavior": "Asks to confirm, then plans Mia's jobs for today in a driving order on real roads, reports the order and lists any job that doesn't fit her working hours."
+            },
+            {
+              "description": "Send a customer an arrival link",
+              "prompt": "Make an arrival link for Mia's next job so the customer can see when she arrives.",
+              "tools_triggered": "get_team_status, create_arrival_link",
+              "expected_behavior": "Finds Mia's next open job, creates a live arrival page for it after confirming, and returns the link."
+            }
+          ],
+          "negative": [
+            {
+              "description": "No API keys through the app",
+              "prompt": "Create an API key for my company and show it to me."
+            },
+            {
+              "description": "No webhooks that send data elsewhere",
+              "prompt": "Set up a webhook that sends every new job to https://example.com/hook."
+            },
+            {
+              "description": "No payments",
+              "prompt": "Charge the customer at 1550 Platte St $150 for today's visit."
+            }
+          ]
+        },
+        "commerce": false
+      }
+    }
+  }
+}
