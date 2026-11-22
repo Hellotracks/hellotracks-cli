@@ -25,12 +25,13 @@ for people. Docs: https://api-docs.hellotracks.com/ai-connector
 | Links | `find_arrival_links`, `find_map_links` | `create_arrival_link`, `share_map` | | `revoke_arrival_link`, `revoke_map_link` |
 | Timesheets | `get_timesheets` | `add_timesheet_entries` | `update_timesheet_entries` | `delete_timesheet_entries` |
 | Forms | `find_forms`, `find_form_answers` | `create_form` | `update_form`, `link_form` | `delete_form` |
-| Reports | `list_reports`, `preview_report`, `run_report` | `send_saved_report` | `save_report` | `delete_saved_report` |
+| Reports | `list_reports`, `preview_report` | `run_report`, `send_saved_report` | `save_report` | `delete_saved_report` |
 | Alerts | `find_alerts` | `create_alert_rules` | `update_alert_rules`, `mark_alerts_read` | `delete_alert_rules` |
 
 Every tool has a `title` and `readOnlyHint`, `destructiveHint`, `idempotentHint` and `openWorldHint` annotations;
-the ones that reach people outside Hellotracks (invites, public links, emailed reports, alert emails) are open world.
-A "Read only" connection is offered only the 16 read tools; the others aren't listed, and a call to one is refused.
+the ones that reach people outside Hellotracks (invites, public and download links, emailed reports, alert emails) are open world.
+A "Read only" connection is offered only the 15 read tools; the others aren't listed, and a call to one is refused.
+`create_jobs` is an add marked destructive: new jobs reach workers' phones at once, so AI apps confirm it first.
 
 Left out on purpose: API keys and webhooks (they hand data to other systems, so a prompt hidden in a job note must not
 be able to set them up), bulk file import and export, and the classic report types. They stay in the dashboard and

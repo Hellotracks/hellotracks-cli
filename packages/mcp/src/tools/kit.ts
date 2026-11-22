@@ -36,6 +36,8 @@ export interface ToolSpec<Shape extends z.ZodRawShape> {
   effect: Effect;
   /** It reaches people or the web outside Hellotracks: invites, public links, emails. */
   openWorld?: boolean;
+  /** An add that can't be taken back, like jobs that reach workers' phones at once, so AI apps confirm it first. */
+  destructive?: boolean;
   input: Shape;
 }
 
@@ -63,7 +65,12 @@ export class Tools {
       title: spec.title,
       description: spec.description,
       inputSchema: spec.input,
-      annotations: { title: spec.title, ...HINTS[spec.effect], openWorldHint: spec.openWorld ?? false }
+      annotations: {
+        title: spec.title,
+        ...HINTS[spec.effect],
+        ...(spec.destructive === undefined ? {} : { destructiveHint: spec.destructive }),
+        openWorldHint: spec.openWorld ?? false
+      }
     }, async (args) => run(async () => {
       if (spec.effect !== "read" && this.ctx.connection.grant.readOnly) {
         throw new ApiError("This connection is read only. Reconnect Hellotracks without \"Read only\" to make changes.", "read_only", 403);

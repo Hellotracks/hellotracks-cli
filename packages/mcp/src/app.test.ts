@@ -326,7 +326,7 @@ test("a metadata-document client with a loopback redirect connects read only", a
   assert.equal(tokens.scope, "read");
   // Only the reading tools are offered, so the AI app never shows a change it can't make.
   const listed = (await rpc(tokens.access_token, "tools/list", {})).body?.result.tools as Array<{ name: string; annotations: { readOnlyHint: boolean } }>;
-  assert.equal(listed.length, 16);
+  assert.equal(listed.length, 15);
   assert.ok(listed.every((tool) => tool.annotations.readOnlyHint), "only read tools");
   const result = await rpc(tokens.access_token, "tools/call", { name: "create_jobs", arguments: { jobs: [{ title: "Nope" }] } });
   assert.equal(result.body?.result.isError, true);
@@ -506,10 +506,14 @@ test("every tool says honestly what it does to data", async () => {
   const tokens = await connect("https://claude.ai/oauth/claude-code-client-metadata", "http://localhost:53126/callback");
   const tools = (await rpc(tokens.access_token, "tools/list", {})).body?.result.tools as Array<{ name: string; annotations: { readOnlyHint: boolean; destructiveHint: boolean } }>;
   for (const tool of tools) {
-    const reads = /^(get|find|list|preview|run)_/.test(tool.name);
+    // run_report makes a file anyone with its link can download, so it isn't read-only (OpenAI's review, 2026-11-22).
+    const reads = /^(get|find|list|preview)_/.test(tool.name);
     assert.equal(tool.annotations.readOnlyHint, reads, tool.name);
-    if (/^(delete|remove|revoke)_/.test(tool.name)) {
+    if (/^(delete|remove|revoke)_/.test(tool.name) || tool.name === "create_jobs") {
       assert.equal(tool.annotations.destructiveHint, true, tool.name);
     }
   }
+  const hints = (name: string) => (tools.find((tool) => tool.name === name)?.annotations ?? {}) as Record<string, boolean>;
+  assert.equal(hints("run_report").openWorldHint, true);
+  assert.equal(hints("update_alert_rules").openWorldHint, true);
 });

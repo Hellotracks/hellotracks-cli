@@ -68,6 +68,7 @@ export function registerAlertTools(tools: Tools): void {
     title: "Update alert rules",
     description: "Change alert rules, or pause and resume them (paused). Only the fields given change.",
     effect: "change",
+    openWorld: true,
     input: { rules: z.array(z.object({ id: z.string(), ...ruleFields, title: ruleFields.title.optional(), action: ruleFields.action.optional() })).min(1).max(20) }
   }, async ({ rules }, { context }) => {
     const { done, failed } = await each(rules, (rule) => ({ id: rule.id }), async ({ id, ...rule }) => pick((await updateAlertConfigAction(context, id, ruleBody(rule))).config, ["id", "title", "action", "statusText"]));

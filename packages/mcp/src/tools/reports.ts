@@ -74,7 +74,8 @@ export function registerReportTools(tools: Tools): void {
   tools.add("run_report", {
     title: "Run report",
     description: "Make a report file (PDF, Excel, CSV, as list_reports offers) and return signed download links; anyone with a link can download it until it expires. Big reports may take longer than this call waits: then it returns the run id, and calling run_report again with runId picks up the files.",
-    effect: "read",
+    effect: "add",
+    openWorld: true,
     input: {
       ...requestFields,
       report: requestFields.report.optional(),

@@ -83,6 +83,7 @@ export function registerJobTools(tools: Tools): void {
     title: "Create jobs",
     description: "Create one or more jobs (up to 50). They appear on the dashboard and, when assigned, on the person's phone at once. Give externalId to make a retry safe. Run optimize_route afterwards to fit them into the person's day.",
     effect: "add",
+    destructive: true,
     input: { jobs: z.array(z.object(jobFields)).min(1).max(50) }
   }, async ({ jobs }, ctx) => {
     const { done, failed } = await each(jobs, (job) => ({ title: job.title }), async (job) =>
